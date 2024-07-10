@@ -1,0 +1,32 @@
+[
+    { 
+        "id": 1,
+        "firstName": "John",
+        "lastName": "Doe",
+        "age": 30,
+        "country": "USA",
+        "address": { "street": "123 Park Ave", "city": "New York" },
+        "skills": ["JavaScript", "React", "Node.js"],
+        "active": true
+    },
+    { 
+        "id": 2,
+        "firstName": "Jane",
+        "lastName": "Smith",
+        "age": 25,
+        "country": "Canada",
+        "address": { "street": "456 Bay St", "city": "Toronto" },
+        "skills": ["Python", "Django", "SQL"],
+        "active": false
+    },
+    { 
+        "id": 3,
+        "firstName": "Michael",
+        "lastName": "Johnson",
+        "age": 40,
+        "country": "UK",
+        "address": { "street": "789 Oxford St", "city": "London" },
+        "skills": ["Java", "Spring Boot", "MySQL"],
+        "active": true
+    }
+]
