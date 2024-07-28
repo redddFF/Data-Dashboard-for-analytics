@@ -1,30 +1,33 @@
-// src/App.js
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { connectWebSocket } from './actions/dataActions';
+import CSVImporter from './components/CSVImporter';
 import DataGridTable from './components/DataGridTable';
 import ChartSelector from './components/ChartSelector';
 
 function App() {
-  const [data, setData] = useState([]);
+  const dispatch = useDispatch();
+  const { data, error } = useSelector(state => state.data);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get('https://dummyjson.com/products');
-        setData(response.data.products);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
-    };
+    const cleanupWebSocket = dispatch(connectWebSocket());
 
-    fetchData();
-  }, []);
+    return () => {
+      cleanupWebSocket(); // Clean up WebSocket connection on component unmount
+    };
+  }, [dispatch]);
 
   return (
     <div className="App">
       <h1>My Charts and Table</h1>
-      <DataGridTable data={data} />
-      <ChartSelector data={data} />
+      <CSVImporter onFileUpload={() => {}} />
+      {error && <p> {error.message}</p>}
+      {data.length > 0 && (
+        <>
+          <DataGridTable data={data} />
+          <ChartSelector data={data} />
+        </>
+      )}
     </div>
   );
 }

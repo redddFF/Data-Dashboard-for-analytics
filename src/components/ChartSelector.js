@@ -1,11 +1,12 @@
 // src/components/ChartSelector.js
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { Checkbox, FormControlLabel, FormGroup, Box } from '@mui/material';
-import LineChartComponent from './LineChartComponent';
-import BarChartComponent from './BarChartComponent';
-import PieChartComponent from './PieChartComponent';
-import ScatterPlotComponent from './ScatterPlotComponent';
-import AreaChartComponent from './AreaChartComponent';
+import LineChartComponent from './charts/LineChartComponent';
+import BarChartComponent from './charts/BarChartComponent';
+import PieChartComponent from './charts/PieChartComponent';
+import ScatterPlotComponent from './charts/ScatterPlotComponent';
+import AreaChartComponent from './charts/AreaChartComponent';
 
 const ChartSelector = ({ data }) => {
   const [columns, setColumns] = useState([]);
@@ -18,33 +19,63 @@ const ChartSelector = ({ data }) => {
     areaChart: false,
   });
 
+  // Use 100 as a limit for data items
+  const limit = 50;
+
   useEffect(() => {
     if (data.length > 0) {
-      // Extract numerical column names
       const columnKeys = Object.keys(data[0]).filter(key => typeof data[0][key] === 'number');
+
+      // Update columns and preserve the state of selected columns for existing columns
       setColumns(columnKeys);
-      setSelectedColumns(columnKeys.reduce((acc, key) => ({ ...acc, [key]: false }), {}));
+
+      setSelectedColumns(prevSelectedColumns => {
+        const updatedSelectedColumns = { ...prevSelectedColumns };
+
+        // Remove columns that are no longer in the data
+        Object.keys(updatedSelectedColumns).forEach(col => {
+          if (!columnKeys.includes(col)) {
+            delete updatedSelectedColumns[col];
+          }
+        });
+
+        // Add new columns and initialize their state
+        columnKeys.forEach(col => {
+          if (!(col in updatedSelectedColumns)) {
+            updatedSelectedColumns[col] = false;
+          }
+        });
+
+        return updatedSelectedColumns;
+      });
     }
   }, [data]);
 
   const handleColumnChange = (event) => {
-    setSelectedColumns({
-      ...selectedColumns,
-      [event.target.name]: event.target.checked,
-    });
+    const { name, checked } = event.target;
+    setSelectedColumns(prevState => ({
+      ...prevState,
+      [name]: checked,
+    }));
   };
 
   const handleChartChange = (event) => {
-    setSelectedCharts({
-      ...selectedCharts,
-      [event.target.name]: event.target.checked,
-    });
+    const { name, checked } = event.target;
+    setSelectedCharts(prevState => ({
+      ...prevState,
+      [name]: checked,
+    }));
   };
 
-  // Prepare chart data based on selected columns
-  const transformDataForCharts = (data) => {
-    return data.map((item, index) => {
-      const transformedItem = { name: item.name || `Item ${index + 1}` }; // Default to 'Item X' if 'name' is missing
+  // Limit data to the first 100 items
+  const limitedData = useMemo(() => {
+    return data.slice(0, limit);
+  }, [data]);
+
+  // Transform data based on selected columns
+  const transformedData = useMemo(() => {
+    return limitedData.map((item, index) => {
+      const transformedItem = { name: item.name || `Item ${index + 1}` };
       Object.keys(selectedColumns).forEach(column => {
         if (selectedColumns[column]) {
           transformedItem[column] = item[column];
@@ -52,18 +83,21 @@ const ChartSelector = ({ data }) => {
       });
       return transformedItem;
     });
-  };
+  }, [limitedData, selectedColumns]);
 
-  const transformedData = transformDataForCharts(data);
+  // Prepare data for Pie chart
+  const pieData = useMemo(() => {
+    return transformedData.map(item => ({
+      name: item.name,
+      value: Object.values(item).reduce((acc, val) => (typeof val === 'number' ? acc + val : acc), 0),
+    }));
+  }, [transformedData]);
 
-  // Prepare data for Pie Chart
-  const pieData = transformedData.map(item => ({
-    name: item.name,
-    value: Object.values(item).reduce((acc, val) => (typeof val === 'number' ? acc + val : acc), 0),
-  }));
+  // Prepare data for Scatter Plot
+  const scatterColumns = useMemo(() => {
+    return Object.keys(selectedColumns).filter(key => selectedColumns[key]);
+  }, [selectedColumns]);
 
-  // Determine X and Y keys for Scatter Plot
-  const scatterColumns = Object.keys(selectedColumns).filter(key => selectedColumns[key]);
   const xKey = scatterColumns[0];
   const yKey = scatterColumns[1];
 
@@ -77,7 +111,7 @@ const ChartSelector = ({ data }) => {
               key={column}
               control={
                 <Checkbox
-                  checked={selectedColumns[column]}
+                  checked={selectedColumns[column] || false}
                   onChange={handleColumnChange}
                   name={column}
                 />
@@ -145,9 +179,7 @@ const ChartSelector = ({ data }) => {
         {selectedCharts.lineChart && <LineChartComponent data={transformedData} />}
         {selectedCharts.barChart && <BarChartComponent data={transformedData} />}
         {selectedCharts.pieChart && <PieChartComponent data={pieData} />}
-        {selectedCharts.scatterPlot && scatterColumns.length >= 2 && (
-          <ScatterPlotComponent data={transformedData} xKey={xKey} yKey={yKey} />
-        )}
+        {selectedCharts.scatterPlot && xKey && yKey && <ScatterPlotComponent data={transformedData} xKey={xKey} yKey={yKey} />}
         {selectedCharts.areaChart && <AreaChartComponent data={transformedData} />}
       </div>
     </Box>
